@@ -7,11 +7,15 @@ A modern, extensible terminal emulator inspired by iTerm2.
 - Install deps: `npm install`
 - Run dev app: `npm run dev`
 
-If `node-pty` and `xterm` are not installed yet, the app will run with a basic fallback terminal view and echo backend. Install them later:
+Optional full terminal stack:
 
 ```
 npm i node-pty xterm xterm-addon-fit xterm-addon-web-links
 ```
+
+If `node-pty` is missing, sessions run in echo mode. If `xterm` is missing, a basic text view is used.
+
+Electron is pinned in `devDependencies`. If your platform needs a different build, adjust the version in `package.json` and re-install.
 
 ## Roadmap (high level)
 - Tabs, splits, session persistence

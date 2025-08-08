@@ -4,7 +4,61 @@ const $$ = (sel) => Array.from(document.querySelectorAll(sel))
 let tabs = []
 let activeTabId = null
 
-function createPane(sessionId) {
+async function tryCreateXterm(container, sessionId) {
+  try {
+    const [{ Terminal }, { FitAddon }, { WebLinksAddon }] = await Promise.all([
+      import('xterm'),
+      import('xterm-addon-fit'),
+      import('xterm-addon-web-links'),
+    ])
+    const term = new Terminal({
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+      cursorBlink: true,
+      allowProposedApi: true,
+      convertEol: true,
+      theme: { background: '#0b0e16' },
+    })
+    const fit = new FitAddon()
+    const links = new WebLinksAddon()
+    term.loadAddon(fit)
+    term.loadAddon(links)
+
+    const host = document.createElement('div')
+    host.style.height = '100%'
+    host.style.width = '100%'
+    container.appendChild(host)
+
+    term.open(host)
+    fit.fit()
+
+    window.terminal.onData(({ id, data }) => {
+      if (id !== sessionId) return
+      term.write(data)
+    })
+    window.terminal.onExit(({ id }) => {
+      if (id !== sessionId) return
+      term.writeln('\r\n[Session exited]')
+    })
+
+    term.onData((data) => {
+      window.terminal.write(sessionId, data)
+    })
+
+    const ro = new ResizeObserver(() => {
+      fit.fit()
+      const cols = term.cols
+      const rows = term.rows
+      window.terminal.resize(sessionId, cols, rows)
+    })
+    ro.observe(container)
+
+    return { term, dispose: () => ro.disconnect() }
+  } catch (e) {
+    return null
+  }
+}
+
+function createFallbackView(sessionId) {
   const pane = document.createElement('div')
   pane.className = 'pane'
 
@@ -69,11 +123,31 @@ function createPane(sessionId) {
     status.textContent = 'Session exited'
   })
 
-  // Resize observer placeholder
-  const ro = new ResizeObserver(() => {
-    // In xterm mode we would compute cols/rows and call resize
-  })
+  const ro = new ResizeObserver(() => {})
   ro.observe(pane)
+
+  return pane
+}
+
+async function createPane(sessionId) {
+  const pane = document.createElement('div')
+  pane.className = 'pane'
+
+  const xtermContainer = document.createElement('div')
+  xtermContainer.style.height = '100%'
+  xtermContainer.style.width = '100%'
+  pane.appendChild(xtermContainer)
+
+  const xterm = await tryCreateXterm(xtermContainer, sessionId)
+  if (!xterm) {
+    pane.innerHTML = ''
+    return createFallbackView(sessionId)
+  }
+
+  // If xterm is in use, clicking focuses the terminal
+  pane.addEventListener('mousedown', () => {
+    xterm.term.focus()
+  })
 
   return pane
 }
@@ -100,7 +174,7 @@ function renderContent() {
 
 async function createTab() {
   const { id } = await window.terminal.create({})
-  const pane = createPane(id)
+  const pane = await createPane(id)
   const tab = { id, title: `Tab ${tabs.length + 1}`, pane }
   tabs.push(tab)
   setActiveTab(id)
@@ -110,18 +184,15 @@ function setActiveTab(id) {
   activeTabId = id
   renderTabs()
   renderContent()
-  // Focus input capture of the active pane
-  const input = $$('.input-capture')[0]
-  input?.focus()
 }
 
 $('#add-tab').onclick = createTab
 
-window.terminal.onCreated?.(({ id }) => {
-  const pane = createPane(id)
+window.terminal.onCreated?.(async ({ id }) => {
+  const pane = await createPane(id)
   const tab = { id, title: `Tab ${tabs.length + 1}`, pane }
   tabs.push(tab)
   setActiveTab(id)
 })
 
-// Load layout in future; for now just rely on initial created event
+// Future: load persisted layout
