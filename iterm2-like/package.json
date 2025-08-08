@@ -1,0 +1,17 @@
+{
+  "name": "iterm2-like",
+  "version": "0.1.0",
+  "description": "A modern, extensible terminal emulator inspired by iTerm2.",
+  "license": "MIT",
+  "type": "module",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "pack": "echo 'Use electron-builder/forge later'"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^30.0.9"
+  }
+}
