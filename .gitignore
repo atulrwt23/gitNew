@@ -1,0 +1,22 @@
+# Node
+node_modules/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS/Editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Others
+*.env
+.env*
+coverage/
+dist/
+build/
